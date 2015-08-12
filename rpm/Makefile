@@ -11,8 +11,10 @@
 # of the GNU Lesser General Public License along with this program.  If not,
 # see <http://www.gnu.org/licenses/>.
 
-PACKAGE_VERSION := 1.0.1
-RPM_REVISION := 5
+# This Makefile is a complete train wreck.  I'm sorry.  --tsuna
+
+PACKAGE_VERSION := 1.2.1
+RPM_REVISION := 1
 # Where do we install our files.
 tcollectordir := /usr/local/tcollector
 
@@ -22,13 +24,13 @@ CP_P := cp -p
 # In some environment this command can be called `gsha1sum' or `digest'.
 SHA1SUM := sha1sum
 ZIP := zip -9
-PYTHON_VERSION := 2.6
+PYTHON_VERSION := 2.7
 PYTHON := python$(PYTHON_VERSION)
 
 # Our "source tree" is in the parent directory, always.
 VPATH := ..
 
-# What files to put in the EOSRPM.
+# What files to put in the RPM.
 FILES := \
 	collectors/0/dfstat.py	\
 	collectors/0/ifstat.py	\
@@ -41,6 +43,11 @@ FILES := \
 	collectors/lib/__init__.py	\
 	collectors/lib/utils.py	\
 	tcollector.py	\
+
+# Extra EOS-specific collectors
+EXTRA := \
+	eos/collectors/agentcpu.sh	\
+	eos/collectors/eos.py	\
 
 git_version := \
   `git rev-list --pretty=format:%h HEAD --max-count=1 | sed 1d || echo unknown`
@@ -80,11 +87,11 @@ manifest.txt: $(EOSRPM) Makefile
         done
 	if test -d $(RPM_TARGET); then rmdir $(RPM_TARGET); fi
 
-.dist-stamp: $(FILES) Makefile
+.dist-stamp: $(FILES) $(EXTRA) Makefile
 	rm -rf $(DESTDIR)
 	$(MKDIR_P) "$(DESTDIR)"
-	@: >filelist; \
-        for file in $(FILES); do \
+	@: >filelist >filelist.extra
+	for file in $(FILES); do \
           d=`dirname "$$file"`;  \
           if test ! -d "$(DESTDIR)/$(tcollectordir)/$$d"; then \
             echo "%dir \"$(tcollectordir)/$$d\"" >>filelist; \
@@ -93,14 +100,22 @@ manifest.txt: $(EOSRPM) Makefile
           fi; \
           echo "\"$(tcollectordir)/$$file\"" >>filelist; \
           case $$file in \
-            (*.py) echo "\"$(tcollectordir)/$${file}c\"" >>filelist; \
-                   echo "\"$(tcollectordir)/$${file}o\"" >>filelist;; \
+            (*.py) echo "\"$(tcollectordir)/$${file}c\"" >>filelist;; \
           esac; \
           echo $(CP_P) "$(VPATH)/$$file" "'$(DESTDIR)/$(tcollectordir)/$$file'"; \
           $(CP_P) "$(VPATH)/$$file" "$(DESTDIR)/$(tcollectordir)/$$file" || exit $$?; \
         done
+	@for file in $(EXTRA); do \
+          src=$(VPATH)/$$file; \
+          file="$(tcollectordir)/collectors/0/`basename $$file`"; \
+          echo "\"$$file\"" >>filelist.extra; \
+          case $$file in \
+            (*.py) echo "\"$${file}c\"" >>filelist.extra;; \
+          esac; \
+          echo $(CP_P) "$$src" "'$(DESTDIR)/$$file'"; \
+          $(CP_P) "$$src" "$(DESTDIR)/$$file" || exit $$?; \
+        done
 	$(PYTHON) -m compileall -q "$(DESTDIR)"
-	$(PYTHON) -O -m compileall -q "$(DESTDIR)"
 	chmod -R a+rX "$(DESTDIR)"
 	@touch $@
 
@@ -135,10 +150,17 @@ $(RPM_SPEC): common.spec linux.spec
 
 EOSRPM_SPEC := $(EOSRPM:.rpm=.spec)
 $(EOSRPM_SPEC): eos.spec common.spec
+	$(MKDIR_P) $(DESTDIR)/usr/bin
+	$(CP_P) "$(VPATH)/eos/tcollector" "$(DESTDIR)/usr/bin/"
+	$(MKDIR_P) $(DESTDIR)/usr/lib/python$(PYTHON_VERSION)/site-packages/
+	$(CP_P) "$(VPATH)/eos/tcollector_agent.py" "$(DESTDIR)/usr/lib/python$(PYTHON_VERSION)/site-packages/"
 	{ \
           cat $^; \
           echo %files; \
           cat filelist; \
+          cat filelist.extra; \
+          echo /usr/lib/python$(PYTHON_VERSION)/site-packages/tcollector_agent.py; \
+          echo '%attr(755, -, -) /usr/bin/tcollector'; \
           echo %changelog; \
           cat ChangeLog; \
           echo %description; \
@@ -147,11 +169,10 @@ $(EOSRPM_SPEC): eos.spec common.spec
 	mv $@-t $@
 
 clean:
-	@for file in $(FILES) $(FILES:.py=.pyc) $(FILES:.py=.pyo); do \
-          echo rm -f "'$(DESTDIR)/$(tcollectordir)/$$file'"; \
-          rm -f "$(DESTDIR)/$(tcollectordir)/$$file" || exit $$?; \
-        done
+	rm -rf "$(DESTDIR)/$(tcollectordir)"
 	rm -f $(DESTDIR)/etc/init.d/tcollector
+	rm -f $(DESTDIR)/usr/bin/tcollector
+	rm -f $(DESTDIR)/usr/lib/python$(PYTHON_VERSION)/site-packages/tcollector_agent.py*
 	@test -d "$(DESTDIR)" || exit 0; \
         find "$(DESTDIR)" -depth -type d \
         | while read dir; do \

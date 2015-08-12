@@ -4,24 +4,25 @@
 # Keep it sh compatible, test with bash, dash, ksh, and zsh.
 
 # TSD_HOST=dns.name.of.tsd
-SCRIPT_DIR="$(dirname $(readlink -f $0))"
+SCRIPT_DIR="$(cd $(dirname $0) && pwd)"
 TCOLLECTOR_PATH=${TCOLLECTOR_PATH-"${SCRIPT_DIR}"}
+LOG=${LOG-'/var/log/tcollector.log'}
+HOSTNAME=$(hostname)
+PIDFILE=${PIDFILE-'/var/run/tcollector.pid'}
+
 test -n "$TSD_HOST" || {
     echo >&2 "TSD_HOST is not set in $0"
     exit 1
 }
 
-HOSTNAME=$(hostname)
-PIDFILE=${PIDFILE-'/var/run/tcollector.pid'}
 PROG=$TCOLLECTOR_PATH/tcollector.py
-LOG=${LOG-'/var/log/tcollector.log'}
 COMMAND=$1
 
 # some shells fail to shift if nothing to shift
 test "$#" -gt 0 && {
     shift
 }
-ARGS="-c $TCOLLECTOR_PATH/collectors -H $TSD_HOST -t host=$HOSTNAME -P $PIDFILE"
+ARGS="-c $TCOLLECTOR_PATH/collectors -H $TSD_HOST -t host=$HOSTNAME -P $PIDFILE --logfile $LOG"
 ARGS="$ARGS $@"
 
 # Sanity checks.
@@ -48,7 +49,7 @@ for i in "$PIDFILE" "$LOG"; do
 done
 
 which_python () {
-    for python in /usr/bin/python2.6 /usr/bin/python2.5 /usr/bin/python; do
+    for python in /usr/bin/python2.7 /usr/bin/python2.6 /usr/bin/python2.5 /usr/bin/python /usr/local/bin/python; do
         test -x "$python" && echo "$python" && return
     done
     echo >&2 'Could not find a Python interpreter'

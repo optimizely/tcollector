@@ -26,8 +26,8 @@ COLLECTION_INTERVAL = 60  # seconds
 NUMADIR = "/sys/devices/system/node"
 
 
-def open_sysfs_numa_stats():
-    """Returns a possibly empty list of opened files."""
+def find_sysfs_numa_stats():
+    """Returns a possibly empty list of NUMA stat file names."""
     try:
         nodes = os.listdir(NUMADIR)
     except OSError, (errno, msg):
@@ -39,7 +39,7 @@ def open_sysfs_numa_stats():
     numastats = []
     for node in nodes:
         try:
-            numastats.append(open(os.path.join(NUMADIR, node, "numastat")))
+            numastats.append(os.path.join(NUMADIR, node, "numastat"))
         except OSError, (errno, msg):
             if errno == 2:  # No such file or directory
                 continue
@@ -48,9 +48,9 @@ def open_sysfs_numa_stats():
 
 
 def print_numa_stats(numafiles):
-    """From a list of opened files, extracts and prints NUMA stats."""
-    for numafile in numafiles:
-        numafile.seek(0)
+    """From a list of files names, opens file, extracts and prints NUMA stats."""
+    for numafilename in numafiles:
+        numafile = open(numafilename)
         node_id = int(numafile.name[numafile.name.find("/node/node")+10:-9])
         ts = int(time.time())
         stats = dict(line.split() for line in numafile.read().splitlines())
@@ -77,6 +77,7 @@ def print_numa_stats(numafiles):
         # Pages successfully allocated with the interleave policy.
         print ("sys.numa.interleave %d %s node=%d type=hit"
                % (ts, stats["interleave_hit"], node_id))
+        numafile.close()
 
 
 def main():
@@ -90,21 +91,21 @@ def main():
     f_entropy_avail = open("/proc/sys/kernel/random/entropy_avail", "r")
     f_interrupts = open("/proc/interrupts", "r")
 
-    f_scaling = "/sys/devices/system/cpu/cpu%s/cpufreq/cpuinfo_%s_freq"
+    f_scaling = "/sys/devices/system/cpu/cpu%s/cpufreq/%s_freq"
     f_scaling_min  = dict([])
     f_scaling_max  = dict([])
     f_scaling_cur  = dict([])
-    for cpu in glob.glob("/sys/devices/system/cpu/cpu[0-9]*/cpufreq/cpuinfo_cur_freq"):
-        m = re.match("/sys/devices/system/cpu/cpu([0-9]*)/cpufreq/cpuinfo_cur_freq", cpu)
+    for cpu in glob.glob("/sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq"):
+        m = re.match("/sys/devices/system/cpu/cpu([0-9]*)/cpufreq/scaling_cur_freq", cpu)
         if not m:
             continue
         cpu_no = m.group(1)
         sys.stderr.write(f_scaling % (cpu_no,"min"))
-        f_scaling_min[cpu_no] = open(f_scaling % (cpu_no,"min"), "r")
-        f_scaling_max[cpu_no] = open(f_scaling % (cpu_no,"max"), "r")
-        f_scaling_cur[cpu_no] = open(f_scaling % (cpu_no,"cur"), "r")
+        f_scaling_min[cpu_no] = open(f_scaling % (cpu_no,"cpuinfo_min"), "r")
+        f_scaling_max[cpu_no] = open(f_scaling % (cpu_no,"cpuinfo_max"), "r")
+        f_scaling_cur[cpu_no] = open(f_scaling % (cpu_no,"scaling_cur"), "r")
 
-    numastats = open_sysfs_numa_stats()
+    numastats = find_sysfs_numa_stats()
     utils.drop_privileges()
 
     while True:
@@ -125,7 +126,7 @@ def main():
             if m:
                 if m.group(3).lower() == 'kb':
                     # convert from kB to B for easier graphing
-                    value = str(int(m.group(2)) * 1000)
+                    value = str(int(m.group(2)) * 1024)
                 else:
                     value = m.group(2)
                 print ("proc.meminfo.%s %d %s"

@@ -159,9 +159,11 @@ class Collector(object):
         except IOError, (err, msg):
             if err != errno.EAGAIN:
                 raise
-        except:
+        except AttributeError:
             # sometimes the process goes away in another thread and we don't
             # have it anymore, so log an error and bail
+            LOG.exception('caught exception, collector process went away while reading stdout')
+        except:
             LOG.exception('uncaught exception in stdout read')
             return
 
@@ -404,7 +406,7 @@ class SenderThread(threading.Thread):
        buffering we might need to do if we can't establish a connection
        and we need to spool to disk.  That isn't implemented yet."""
 
-    def __init__(self, reader, dryrun, hosts, self_report_stats, tags):
+    def __init__(self, reader, dryrun, hosts, self_report_stats, tags, reconnectinterval):
         """Constructor.
 
         Args:
@@ -431,6 +433,8 @@ class SenderThread(threading.Thread):
         self.port = None  # The port of the current TSD.
         self.tsd = None   # The socket connected to the aforementioned TSD.
         self.last_verify = 0
+        self.reconnectinterval = reconnectinterval    # reconnectinterval in seconds.
+        self.time_reconnect = 0                 # if reconnectinterval > 0, used to track the time.
         self.sendq = []
         self.self_report_stats = self_report_stats
 
@@ -492,7 +496,8 @@ class SenderThread(threading.Thread):
                         break
                     self.sendq.append(line)
 
-                self.send_data()
+                if ALIVE:
+                    self.send_data()
                 errors = 0  # We managed to do a successful iteration.
             except (ArithmeticError, EOFError, EnvironmentError, LookupError,
                     ValueError), e:
@@ -518,6 +523,16 @@ class SenderThread(threading.Thread):
         if self.last_verify > time.time() - 60:
             return True
 
+        # in case reconnect is activated, check if it's time to reconnect
+        if self.reconnectinterval > 0 and self.time_reconnect < time.time() - self.reconnectinterval:
+            # closing the connection and indicating that we need to reconnect.
+            try:
+                self.tsd.close()
+            except socket.error, msg:
+                pass    # not handling that
+            self.time_reconnect = time.time()
+            return False
+            
         # we use the version command as it is very low effort for the TSD
         # to respond
         LOG.debug('verifying our TSD connection is alive')
@@ -626,6 +641,7 @@ class SenderThread(threading.Thread):
                     self.tsd.settimeout(15)
                     self.tsd.connect(sockaddr)
                     # if we get here it connected
+                    LOG.debug('Connection to %s was successful'%(str(sockaddr)))
                     break
                 except socket.error, msg:
                     LOG.warning('Connection attempt failed to %s:%d: %s',
@@ -754,6 +770,14 @@ def parse_cmdline(argv):
                       help='Number of seconds after which to remove cached '
                            'values of old data points to save memory. '
                            'default=%default')
+    parser.add_option('--allowed-inactivity-time', dest='allowed_inactivity_time', type='int',
+                      default=ALLOWED_INACTIVITY_TIME, metavar='ALLOWEDINACTIVITYTIME',
+                      help='How long to wait for datapoints before assuming '
+                           'a collector is dead and restart it. '
+                           'default=%default')
+    parser.add_option('--remove-inactive-collectors', dest='remove_inactive_collectors', action='store_true',
+                      default=False, help='Remove collectors not sending data '
+                                          'in the max allowed inactivity interval')
     parser.add_option('--max-bytes', dest='max_bytes', type='int',
                       default=64 * 1024 * 1024,
                       help='Maximum bytes per a logfile.')
@@ -765,12 +789,20 @@ def parse_cmdline(argv):
     parser.add_option('--stdout', dest='stdout', action='store_true',
                       default=False,
                       help='Print logs to stdout.')
+    parser.add_option('--reconnect-interval',dest='reconnectinterval', type='int',
+                      default=0, metavar='RECONNECTINTERVAL',
+                      help='Number of seconds after which the connection to'
+                           'the TSD hostname reconnects itself. This is useful'
+                           'when the hostname is a multiple A record (RRDNS).'
+                           )
     (options, args) = parser.parse_args(args=argv[1:])
     if options.dedupinterval < 0:
         parser.error('--dedup-interval must be at least 0 seconds')
     if options.evictinterval <= options.dedupinterval:
         parser.error('--evict-interval must be strictly greater than '
                      '--dedup-interval')
+    if options.reconnectinterval < 0:
+        parser.error('--reconnect-interval must be at least 0 seconds')
     # We cannot write to stdout when we're a daemon.
     if (options.daemonize or options.max_bytes) and not options.backup_count:
         options.backup_count = 1
@@ -794,6 +826,7 @@ def daemonize():
     os.dup2(stdout.fileno(), 2)
     stdin.close()
     stdout.close()
+    os.umask(022)
     for fd in xrange(3, 1024):
         try:
             os.close(fd)
@@ -890,7 +923,7 @@ def main(argv):
 
     # and setup the sender to start writing out to the tsd
     sender = SenderThread(reader, options.dryrun, options.hosts,
-                          not options.no_tcollector_stats, tags)
+                          not options.no_tcollector_stats, tags, options.reconnectinterval)
     sender.start()
     LOG.info('SenderThread startup complete')
 
@@ -933,7 +966,7 @@ def main_loop(options, modules, sender, tags):
         populate_collectors(options.cdir)
         reload_changed_config_modules(modules, options, sender, tags)
         reap_children()
-        check_children()
+        check_children(options)
         spawn_children()
         time.sleep(15)
         now = int(time.time())
@@ -1137,20 +1170,21 @@ def reap_children():
             register_collector(Collector(col.name, col.interval, col.filename,
                                          col.mtime, col.lastspawn))
 
-def check_children():
+def check_children(options):
     """When a child process hasn't received a datapoint in a while,
        assume it's died in some fashion and restart it."""
 
     for col in all_living_collectors():
         now = int(time.time())
 
-        if col.last_datapoint < (now - ALLOWED_INACTIVITY_TIME):
+        if col.last_datapoint < (now - options.allowed_inactivity_time):
             # It's too old, kill it
             LOG.warning('Terminating collector %s after %d seconds of inactivity',
                         col.name, now - col.last_datapoint)
             col.shutdown()
-            register_collector(Collector(col.name, col.interval, col.filename,
-                                         col.mtime, col.lastspawn))
+            if not options.remove_inactive_collectors:
+                register_collector(Collector(col.name, col.interval, col.filename,
+                                             col.mtime, col.lastspawn))
 
 
 def set_nonblocking(fd):

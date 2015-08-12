@@ -15,6 +15,7 @@
 
 import socket
 import sys
+import time
 from collectors.lib import utils
 
 try:
@@ -25,29 +26,52 @@ except ImportError:
 HOST = '127.0.0.1'
 PORT = 8953
 SIZE = 8192
-TIMEOUT = 1
 
 def main():
     if not (udp_bridge_conf and udp_bridge_conf.enabled()):
       sys.exit(13)
     utils.drop_privileges()
 
+    def removePut(line):
+        if line.startswith('put '):
+            return line[4:]
+        else:
+            return line
+
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if (udp_bridge_conf and udp_bridge_conf.usetcp()):
+          sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        else:
+          sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((HOST, PORT))
-    except socket.error as msg:
-        sys.stderr.write('could not open socket: %s\n' % msg)
+    except socket.error, msg:
+        utils.err('could not open socket: %s' % msg)
         sys.exit(1)
 
     try:
-        while 1:
-            data, address = sock.recvfrom(SIZE)
-            if not data:
-                sys.stderr.write("invalid data\n")
-                break
-            print data
-    except KeyboardInterrupt:
-        sys.stderr.write("keyboard interrupt, exiting\n")
+        flush_delay = udp_bridge_conf.flush_delay()
+    except AttributeError:
+        flush_delay = 60
+
+    flush_timeout = int(time.time())
+    try:
+        try:
+            while 1:
+                data, address = sock.recvfrom(SIZE)
+                if data:
+                    lines = data.splitlines()
+                    data = '\n'.join(map(removePut, lines))
+                if not data:
+                    utils.err("invalid data")
+                    break
+                print data
+                now = int(time.time())
+                if now > flush_timeout:
+                    sys.stdout.flush()
+                    flush_timeout = now + flush_delay
+
+        except KeyboardInterrupt:
+            utils.err("keyboard interrupt, exiting")
     finally:
         sock.close()
 
