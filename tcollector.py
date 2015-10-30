@@ -699,7 +699,7 @@ class SenderThread(threading.Thread):
                 gauges.append({
                     'metric': metric,
                     'value': self.num(value),
-                    'timestamp': int(timestamp),
+                    'timestamp': int(timestamp)*1000,
                     'dimensions': tags})
             self.sfx.send(gauges=gauges)
         except:
