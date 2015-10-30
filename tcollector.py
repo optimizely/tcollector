@@ -674,7 +674,8 @@ class SenderThread(threading.Thread):
             else:
                 self.tsd.sendall(out)
                 # If SignalFX Api Key is given, attempt to send to SignalFX
-                if self.sfx: self.send_data_to_signalfx()
+                if self.sfx:
+                    self.send_data_to_signalfx()
             self.sendq = []
         except socket.error, msg:
             LOG.error('failed to send data: %s', msg)
