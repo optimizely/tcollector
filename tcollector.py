@@ -671,6 +671,7 @@ class SenderThread(threading.Thread):
         try:
             if self.dryrun:
                 print out
+                if self.sfx: self.send_data_to_signalfx()
             else:
                 self.tsd.sendall(out)
                 # If SignalFX Api Key is given, attempt to send to SignalFX
