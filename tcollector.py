@@ -801,7 +801,7 @@ def parse_cmdline(argv):
                       help='Print logs to stdout.')
     parser.add_option('--signalfx-api-key', dest='signalfx_api_key', default=None,
                       metavar='KEY',
-                      help='SignalFX Api Key to duplicate and send to SignalFX REST API')
+                      help='SignalFX Api Key to send to SignalFX REST API in parallel')
     (options, args) = parser.parse_args(args=argv[1:])
     if options.dedupinterval < 0:
         parser.error('--dedup-interval must be at least 0 seconds')
@@ -933,7 +933,7 @@ def main(argv):
             import signalfx
             signalfx_api_key = options.signalfx_api_key
         except ImportError:
-            LOG.warning('A SignalFX API Key was given, but no siganlfx python library installation was detected')
+            LOG.warning('A SignalFX API Key was given, but no signalfx python library installation was detected')
 
     # and setup the sender to start writing out to the tsd
     sender = SenderThread(reader, options.dryrun, options.hosts,
