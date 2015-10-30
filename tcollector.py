@@ -434,6 +434,7 @@ class SenderThread(threading.Thread):
         self.sendq = []
         self.self_report_stats = self_report_stats
         if signalfx_api_key:
+            LOG.info('Configuring to send to SignalFX in parallel')
             self.sfx = signalfx.SignalFx(signalfx_api_key)
         else:
             self.sfx = None
