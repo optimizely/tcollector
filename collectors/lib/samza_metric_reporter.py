@@ -1,6 +1,8 @@
 import json
 import re
 import sys
+import socket
+import utils
 
 from kafka import KafkaConsumer
 
@@ -113,6 +115,19 @@ class SamzaMetricReporter:
     def print_consumer_lag(self, ts, value, tags):
         if self.is_number(value):
             print ("%s %d %s %s" % (self.SAMZA_CONSUMER_LAG_METRIC_NAME, ts, value, self.to_tsdb_tag_str(tags)))
+            # Send to DataDog
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
+            sock.sendto("%s:%s|g|#%s" % (self.SAMZA_CONSUMER_LAG_METRIC_NAME, value, self.to_dd_tag_str(tags)), ("localhost", 8125))
+
+
+    def to_dd_tag_str(self, tags):
+        if tags:
+            tags_str = " " + " ".join("%s:%s," % (self.sanitize(name), v)
+                                      for name, v in tags.iteritems())
+        else:
+            tags_str = ""
+
+        return tags_str
 
 
     def to_tsdb_tag_str(self, tags):
