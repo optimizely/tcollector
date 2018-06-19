@@ -1,4 +1,5 @@
 import sys
+import re
 
 from samza_metric_reporter import SamzaMetricReporter
 
@@ -15,32 +16,46 @@ class SamzaCustomMetricReporter(SamzaMetricReporter):
         self.methods_to_run = [self.report_samza_custom_metrics]
 
     def report_samza_custom_metrics(self, metrics_raw, header_raw):
-        class_to_metric_name_map = {
-            'com.optimizely.sessionization.samza.SessionizationTask' : 'sessionization.metrics',
-            'com.optimizely.preprocessing.samza.enrichevent.EnrichProjectIdTask' : 'enrichevents.metrics',
-            'com.optimizely.preprocessing.samza.enrichevent.processor.EventTicketProjectIdProcessor' : 'enrichevents.metrics',
-            'com.optimizely.preprocessing.samza.enrichevent.processor.DecisionEventTicketProjectIdProcessor' : 'enrichevents.metrics',
-            'com.optimizely.validator.samza.ValidatorTask': 'validator.metrics',
-            'com.optimizely.achievement.samza.AchievementTask': 'achievement.metrics',
-        }
+        for class_name, metric in metrics_raw.iteritems():
+            tags = self.create_standard_tags(header_raw)
+            ts = int(header_raw['time'] / 1000)
+            tags['source'] = self.sanitize(header_raw['source'])
+            metric_name_string = self.convert_class_to_metric_name(class_name)
+            if not metric_name_string:
+                continue
 
-        for m in class_to_metric_name_map:
-            if m in metrics_raw:
-                metric = metrics_raw[m]
-                tags = self.create_standard_tags(header_raw)
-                ts = int(header_raw['time'] / 1000)
-                tags['source'] = self.sanitize(header_raw['source'])
+            for metric_name, metric_val in metric.iteritems():
+                self.print_metrics(
+                    metric_name,
+                    ts,
+                    metric_val,
+                    tags,
+                    metric_name_string)
 
-                for metric_name, metric_val in metric.iteritems():
-                    self.print_metrics(
-                        metric_name,
-                        ts,
-                        metric_val,
-                        tags,
-                        class_to_metric_name_map[m])
-
-                sys.stdout.flush()
+            sys.stdout.flush()
 
     def print_metrics(self, metric_name, ts, value, tags, metric_name_string):
         if self.is_number(value):
-            print ("%s.%s %d %s %s" % (metric_name_string, metric_name, ts, value, self.to_tsdb_tag_str(tags)))
+            print("%s.%s %d %s %s" % (metric_name_string, metric_name, ts, value, self.to_tsdb_tag_str(tags)))
+
+
+    def convert_class_to_metric_name(self, class_name):
+        # generic func to extract metric_name_string from class_name, compatible with exsiting mapping like
+        #  'com.optimizely.sessionization.samza.SessionizationTask' : 'sessionization.metrics',
+        #  'com.optimizely.preprocessing.samza.enrichevent.EnrichProjectIdTask' : 'enrichevents.metrics',
+        #  'com.optimizely.preprocessing.samza.enrichevent.processor.EventTicketProjectIdProcessor' : 'enrichevents.metrics',
+        #  'com.optimizely.preprocessing.samza.enrichevent.processor.DecisionEventTicketProjectIdProcessor' : 'enrichevents.metrics',
+        #  'com.optimizely.validator.samza.ValidatorTask': 'validator.metrics',
+        #  'com.optimizely.achievement.samza.AchievementTask': 'achievement.metrics',
+
+        match = re.match('^com\.optimizely\.([a-z]+)\.samza\.\w+\.{0,1}', class_name)
+        if not match:
+            return None
+
+        metric_name = match.group(1)
+
+        # Exception: 'com.optimizely.preprocessing.samza.enrichevent.EnrichProjectIdTask' -> 'enrichevents.metrics'
+        if metric_name == 'preprocessing':
+            metric_name = 'enrichevents'
+
+        return metric_name + '.metrics'
