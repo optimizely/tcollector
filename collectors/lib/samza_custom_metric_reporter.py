@@ -16,28 +16,24 @@ class SamzaCustomMetricReporter(SamzaMetricReporter):
         self.methods_to_run = [self.report_samza_custom_metrics]
 
     def report_samza_custom_metrics(self, metrics_raw, header_raw):
-        for class_name, metric in metrics_raw.iteritems():
+        for class_name, class_metrics in metrics_raw.iteritems():
             tags = self.create_standard_tags(header_raw)
             ts = int(header_raw['time'] / 1000)
             tags['source'] = self.sanitize(header_raw['source'])
-            metric_name_string = self.convert_class_to_metric_name(class_name)
-            if not metric_name_string:
+            metric_name  = self.convert_class_to_metric_name(class_name)
+            if not metric_name:
                 continue
 
-            for metric_name, metric_val in metric.iteritems():
-                self.print_metrics(
-                    metric_name,
-                    ts,
-                    metric_val,
-                    tags,
-                    metric_name_string)
+            self.print_metrics(metric_name, ts, class_metrics, tags)
 
             sys.stdout.flush()
 
-    def print_metrics(self, metric_name, ts, value, tags, metric_name_string):
-        if self.is_number(value):
-            print("%s.%s %d %s %s" % (metric_name_string, metric_name, ts, value, self.to_tsdb_tag_str(tags)))
-
+    def print_metrics(self, name, ts, value, tags):
+        if type(value) is dict:
+            for k, v in value.iteritems():
+                self.print_metrics("{}.{}".format(name, k), ts, v, tags)
+        elif self.is_number(value):
+            print self.sanitize(name), ts, value, self.to_tsdb_tag_str(tags)
 
     def convert_class_to_metric_name(self, class_name):
         # generic func to extract metric_name_string from class_name, compatible with exsiting mapping like
