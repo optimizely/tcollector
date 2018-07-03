@@ -155,7 +155,7 @@ class SamzaMetricReporter:
         try:
             float(s)
             return True
-        except ValueError:
+        except (ValueError, TypeError):
             pass
 
         try:
