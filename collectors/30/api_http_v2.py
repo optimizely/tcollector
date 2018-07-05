@@ -16,21 +16,19 @@ def main():
     not_metrics = ['duration_units', 'rate_units', 'units']
     for metric_type in metric_types:
         for metric, metrics in json[metric_type].iteritems():
-            splitpath = metric.split(".")
-            if len(splitpath) == 0:
-                continue
-            elif len(splitpath) == 1:
-                class_name = None
-                suffix = "." + splitpath[0]
-            elif len(splitpath) > 1:
-                class_name = ".".join(splitpath[:-1])
-                method_name = splitpath[-1]
-                suffix = "." + class_name + "." + method_name
+            class_name = None
+            split_segs = metric.split(".")
+            method_name = "." + split_segs[-1]
+            if len(split_segs) > 1:
+                if split_segs[0].startswith("results-"):
+                    class_name = split_segs[0].split("-")[1]
+                elif (len(split_segs) > 2 and split_segs[0] == "com" and split_segs[1] == "optimizely"):
+                    class_name = ".".join(split_segs[:-1])
 
             for metric, value in metrics.iteritems():
                 if metric in not_metrics:
                     continue
-                print format_tsd_key(METRIC_PREFIX + metric_type + suffix,
+                print format_tsd_key(METRIC_PREFIX + metric_type + method_name,
                         value, TIME, {'class': class_name} if class_name else {})
 
 if __name__ == '__main__':
