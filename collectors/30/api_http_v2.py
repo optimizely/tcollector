@@ -20,8 +20,8 @@ def main():
             if len(splitpath) == 0:
                 continue
             elif len(splitpath) == 1:
-                class_name = splitpath[0]
-                suffix = "." + class_name
+                class_name = None
+                suffix = "." + splitpath[0]
             elif len(splitpath) > 1:
                 class_name = ".".join(splitpath[:-1])
                 method_name = splitpath[-1]
@@ -31,7 +31,7 @@ def main():
                 if metric in not_metrics:
                     continue
                 print format_tsd_key(METRIC_PREFIX + metric_type + suffix,
-                        value, TIME, {'class': class_name})
+                        value, TIME, {'class': class_name} if class_name else {})
 
 if __name__ == '__main__':
     main()
