@@ -13,18 +13,24 @@ METRIC_PREFIX = 'optimizely.codahale.'
 
 def main():
     json = get_json(URL)
-    res_pattern = re.compile(r"results-(\w+)")
+    res_mode_pattern = re.compile(r"results-(\w+)")
+    res_service_pattern = re.compile(r"com.optimizely(?:\.[a-z]+)+\.((?:[A-Z][a-z]+)*ResultsService)")
     metric_types = ['timers', 'meters', 'counters', 'gauges', 'histograms']
     not_metrics = ['duration_units', 'rate_units', 'units']
     for metric_type in metric_types:
         for metric, metrics in json[metric_type].iteritems():
             metric_name = "." + metric
             class_name = None
-            match = res_pattern.search(metric)
-            if match:
-                    metric_name = '.' + re.sub(res_pattern, "resultsMode", metric)
-                    class_name = match.group(1)
-            
+            res_mode_match = res_mode_pattern.search(metric)
+            res_service_match = res_service_pattern.search(metric)
+
+            if res_mode_match:
+                metric_name = '.' + re.sub(res_mode_pattern, "resultsMode", metric)
+                class_name = res_mode_match.group(1)
+            elif res_service_match:
+                metric_name = '.' + re.sub(res_service_pattern, "resultsService", metric)
+                class_name = res_service_match.group(1)
+
             for metric, value in metrics.iteritems():
                 if metric in not_metrics:
                     continue
