@@ -2,6 +2,7 @@
 import time
 import requests
 import sys
+import re
 
 from collectors.lib.optimizely_utils import format_tsd_key, get_json
 
@@ -12,17 +13,18 @@ METRIC_PREFIX = 'optimizely.codahale.'
 
 def main():
     json = get_json(URL)
+    res_pattern = re.compile(r"results-(\w+)")
     metric_types = ['timers', 'meters', 'counters', 'gauges', 'histograms']
     not_metrics = ['duration_units', 'rate_units', 'units']
     for metric_type in metric_types:
         for metric, metrics in json[metric_type].iteritems():
             metric_name = "." + metric
             class_name = None
-            split_segs = metric.split('.')
-            if len(split_segs) > 1:
-                if split_segs[0].startswith('results-'):
-                    metric_name = ".resultsMode." + '.'.join(split_segs[1:])
-                    class_name = split_segs[0].split('-')[1]
+            match = res_pattern.search(metric)
+            if match:
+                    metric_name = '.' + re.sub(res_pattern, "resultsMode", metric)
+                    class_name = match.group(1)
+            
             for metric, value in metrics.iteritems():
                 if metric in not_metrics:
                     continue
