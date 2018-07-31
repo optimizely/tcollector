@@ -64,9 +64,7 @@ class SamzaMetricReporter:
     def report_jvm_and_container_metrics(self, metrics_raw, header_raw):
 
         metrics = {}
-        for m in ['org.apache.samza.metrics.JvmMetrics',
-            'org.apache.samza.container.SamzaContainerMetrics',
-            'org.apache.samza.storage.kv.KeyValueStorageEngineMetrics']:
+        for m in ['org.apache.samza.metrics.JvmMetrics', 'org.apache.samza.container.SamzaContainerMetrics']:
             if m in metrics_raw:
                 metrics[m] = metrics_raw[m]
 
@@ -113,7 +111,6 @@ class SamzaMetricReporter:
         if self.is_number(value):
             print ("%s.%s %d %s %s" %
                    (metric_type.replace('org.apache.', ''), metric_name, ts, value, self.to_tsdb_tag_str(tags)))
-
 
     def print_consumer_lag(self, ts, value, tags):
         if self.is_number(value):
