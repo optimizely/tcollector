@@ -17,7 +17,7 @@ class SamzaMetricReporter:
     """
 
     SAMZA_CONSUMER_LAG_METRIC_NAME = 'samza.consumer.lag'
-    CONSUMER_LAG_PATTERN = re.compile(r'kafka-(.+)-(\d+)-messages-behind-high-watermark')
+    CONSUMER_LAG_PATTERN = re.compile(r'kafka(?:_(?:input|output))?-(.+)-(\d+)-messages-behind-high-watermark')
 
     def __init__(self, consumer_group_id, kafka_bootstrap_servers, kafka_metrics_topic='samza_metrics'):
         utils.drop_privileges()
@@ -65,6 +65,7 @@ class SamzaMetricReporter:
 
         metrics = {}
         for m in ['org.apache.samza.metrics.JvmMetrics', 'org.apache.samza.container.SamzaContainerMetrics']:
+
             if m in metrics_raw:
                 metrics[m] = metrics_raw[m]
 
