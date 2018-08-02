@@ -64,7 +64,9 @@ class SamzaMetricReporter:
     def report_jvm_and_container_metrics(self, metrics_raw, header_raw):
 
         metrics = {}
-        for m in ['org.apache.samza.metrics.JvmMetrics', 'org.apache.samza.container.SamzaContainerMetrics']:
+        for m in ['org.apache.samza.metrics.JvmMetrics',
+            'org.apache.samza.container.SamzaContainerMetrics',
+            'org.apache.samza.storage.kv.KeyValueStoreMetrics']:
 
             if m in metrics_raw:
                 metrics[m] = metrics_raw[m]
@@ -144,7 +146,8 @@ class SamzaMetricReporter:
     @staticmethod
     def create_standard_tags(header_raw):
         tags = {'job-name': "%s-%s" % (header_raw['job-name'], header_raw['job-id']),
-                'container-name': header_raw['container-name'], 'host': header_raw['host']}
+                'container-name': header_raw['container-name'], 'host': header_raw['host'],
+                'source': header_raw['source'].strip().lstrip('TaskName-').replace(' ', '-')}
         return tags
 
     @staticmethod
