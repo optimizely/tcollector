@@ -16,10 +16,11 @@ def main():
         reporter = SamzaMetricReporter(CONSUMER_GROUP_ID, kakfa_bootstrap_servers)
         reporter.run()
 
-    if kafka_bootstrap_servers_eet_csv:
-        kakfa_bootstrap_servers_eet = kafka_bootstrap_servers_eet_csv.split(',')
-        reporter = SamzaMetricReporter(CONSUMER_GROUP_ID, kakfa_bootstrap_servers_eet)
-        reporter.run()
+    # Disabling temporarily until hotspotting is resolved
+    # if kafka_bootstrap_servers_eet_csv:
+    #     kakfa_bootstrap_servers_eet = kafka_bootstrap_servers_eet_csv.split(',')
+    #     reporter = SamzaMetricReporter(CONSUMER_GROUP_ID, kakfa_bootstrap_servers_eet)
+    #     reporter.run()
 
 if __name__ == "__main__":
     sys.exit(main())
