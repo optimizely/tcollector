@@ -1,5 +1,4 @@
 #!/usr/bin/python
-import os
 import sys
 
 from collectors.lib.samza_metric_reporter import SamzaMetricReporter
