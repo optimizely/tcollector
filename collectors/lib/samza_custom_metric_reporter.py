@@ -12,7 +12,7 @@ class SamzaCustomMetricReporter(SamzaMetricReporter):
     """
 
     def __init__(self, consumer_group_id, kafka_bootstrap_servers, kafka_metrics_topic='samza_metrics'):
-        SamzaMetricReporter.__init__(self, consumer_group_id, kafka_bootstrap_servers, kafka_metrics_topic)
+        SamzaMetricReporter.__init__(self, consumer_group_id, kafka_bootstrap_servers, kafka_metrics_topic=kafka_metrics_topic)
         self.methods_to_run = [self.report_samza_custom_metrics]
 
     def report_samza_custom_metrics(self, metrics_raw, header_raw):

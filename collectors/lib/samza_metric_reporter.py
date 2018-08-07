@@ -19,12 +19,13 @@ class SamzaMetricReporter:
     SAMZA_CONSUMER_LAG_METRIC_NAME = 'samza.consumer.lag'
     CONSUMER_LAG_PATTERN = re.compile(r'kafka(?:_(?:input|output))?-(.+)-(\d+)-messages-behind-high-watermark')
 
-    def __init__(self, consumer_group_id, kafka_bootstrap_servers, kafka_metrics_topic='samza_metrics'):
+    def __init__(self, consumer_group_id, kafka_bootstrap_servers, kafka_cluster_prefix='', kafka_metrics_topic='samza_metrics'):
         utils.drop_privileges()
         self.consumer = KafkaConsumer(kafka_metrics_topic,
                                       group_id=consumer_group_id,
                                       bootstrap_servers=kafka_bootstrap_servers)
         self.methods_to_run = [self.report_consumer_lag, self.report_jvm_and_container_metrics]
+        self.kafka_cluster_prefix = kafka_cluster_prefix
 
     def run(self):
         for message in self.consumer:
@@ -115,7 +116,7 @@ class SamzaMetricReporter:
 
     def print_consumer_lag(self, ts, value, tags):
         if self.is_number(value):
-            print ("%s %d %s %s" % (self.SAMZA_CONSUMER_LAG_METRIC_NAME, ts, value, self.to_tsdb_tag_str(tags)))
+            print ("%s%s %d %s %s" % (self.kafka_cluster_prefix, self.SAMZA_CONSUMER_LAG_METRIC_NAME, ts, value, self.to_tsdb_tag_str(tags)))
             # Send to DataDog
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
             sock.sendto("%s:%s|g|#%s" % (self.SAMZA_CONSUMER_LAG_METRIC_NAME, value, self.to_dd_tag_str(tags)), ("localhost", 8125))
