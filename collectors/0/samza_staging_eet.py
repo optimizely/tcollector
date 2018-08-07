@@ -1,9 +1,9 @@
 #!/usr/bin/python
 import sys
 
-from collectors.lib.samza_custom_metric_reporter import SamzaCustomMetricReporter
+from collectors.lib.samza_metric_reporter import SamzaMetricReporter
 
-CONSUMER_GROUP_ID = "tcollector_samza_custom_metric_eet"
+CONSUMER_GROUP_ID = "tcollector_samza_staging_eet"
 
 KAFKA_BOOTSTRAP_SERVERS = [
     "1.kafka-eet.us-east-1.backend-staging.optimizely:9094",
@@ -15,7 +15,8 @@ KAFKA_BOOTSTRAP_SERVERS = [
 
 
 def main():
-    reporter = SamzaCustomMetricReporter(CONSUMER_GROUP_ID, KAFKA_BOOTSTRAP_SERVERS)
+
+    reporter = SamzaMetricReporter(CONSUMER_GROUP_ID, KAFKA_BOOTSTRAP_SERVERS, 'staging_eet.')
     reporter.run()
 
 if __name__ == "__main__":
