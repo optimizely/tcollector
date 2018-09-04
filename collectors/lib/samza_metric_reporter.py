@@ -65,7 +65,9 @@ class SamzaMetricReporter:
     def report_jvm_and_container_metrics(self, metrics_raw, header_raw):
 
         metrics = {}
-        for m in ['org.apache.samza.metrics.JvmMetrics', 'org.apache.samza.container.SamzaContainerMetrics']:
+        for m in ['org.apache.samza.metrics.JvmMetrics',
+            'org.apache.samza.container.SamzaContainerMetrics',
+            'org.apache.samza.storage.kv.KeyValueStoreMetrics']:
 
             if m in metrics_raw:
                 metrics[m] = metrics_raw[m]
@@ -74,6 +76,10 @@ class SamzaMetricReporter:
         ts = int(header_raw['time'] / 1000)
 
         for metric_type, metric_map in metrics.iteritems():
+            if metric_type == 'org.apache.samza.storage.kv.KeyValueStoreMetrics':
+                # add `source` to distiguish partitions on the same container
+                tags['source'] = header_raw['source'].strip().replace(' ', '-').lower()
+
             for metric_name, metric_val in metric_map.iteritems():
                 self.print_jvm_and_container_metric(self.sanitize(metric_type),
                                                     self.sanitize(metric_name),
@@ -112,7 +118,7 @@ class SamzaMetricReporter:
     def print_jvm_and_container_metric(self, metric_type, metric_name, ts, value, tags):
         if self.is_number(value):
             print ("%s.%s %d %s %s" %
-                   (metric_type.replace('org.apache.', ''), metric_name, ts, value, self.to_tsdb_tag_str(tags)))
+                (metric_type.replace('org.apache.', ''), metric_name, ts, value, self.to_tsdb_tag_str(tags)))
 
     def print_consumer_lag(self, ts, value, tags):
         if self.is_number(value):
