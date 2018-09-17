@@ -15,7 +15,6 @@ KAFKA_BOOTSTRAP_SERVERS = [
 
 
 def main():
-
     reporter = SamzaMetricReporter(CONSUMER_GROUP_ID, KAFKA_BOOTSTRAP_SERVERS, 'staging_eet.')
     reporter.run()
 
