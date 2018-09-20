@@ -1,3 +1,4 @@
+import cProfile
 import sys
 import re
 
@@ -11,8 +12,9 @@ class SamzaCustomMetricReporter(SamzaMetricReporter):
     are reported by SamzaMetricReporter.
     """
 
-    def __init__(self, consumer_group_id, kafka_bootstrap_servers, kafka_metrics_topic='samza_metrics'):
+    def __init__(self, consumer_group_id, kafka_bootstrap_servers, depth_range=None, kafka_metrics_topic='samza_metrics'):
         SamzaMetricReporter.__init__(self, consumer_group_id, kafka_bootstrap_servers, kafka_metrics_topic=kafka_metrics_topic)
+        self.depth_range = depth_range
         self.methods_to_run = [self.report_samza_custom_metrics]
 
     def report_samza_custom_metrics(self, metrics_raw, header_raw):
@@ -33,6 +35,8 @@ class SamzaCustomMetricReporter(SamzaMetricReporter):
             for k, v in value.iteritems():
                 self.print_metrics("{}.{}".format(name, k), ts, v, tags)
         elif self.is_number(value):
+            if self.depth_range and name.count('.') not in self.depth_range:
+                return
             print self.sanitize(name), ts, value, self.to_tsdb_tag_str(tags)
 
     def convert_class_to_metric_name(self, class_name):
@@ -44,7 +48,7 @@ class SamzaCustomMetricReporter(SamzaMetricReporter):
         #  'com.optimizely.validator.samza.ValidatorTask': 'validator.metrics',
         #  'com.optimizely.achievement.samza.AchievementTask': 'achievement.metrics',
 
-        match = re.match('^com\.optimizely\.([a-z]+)\.samza\.\w+\.{0,1}', class_name)
+        match = re.match('^com\.optimizely\.([a-z]+)\.samza\.', class_name)
         if not match:
             return None
 
