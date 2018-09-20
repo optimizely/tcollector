@@ -1,4 +1,3 @@
-import cProfile
 import sys
 import re
 
