@@ -3,7 +3,7 @@ import sys
 
 from collectors.lib.samza_custom_metric_reporter import SamzaCustomMetricReporter
 
-CONSUMER_GROUP_ID = "tcollector_samza_custom_metric_prod_eet"
+CONSUMER_GROUP_ID = "tcollector_samza_custom_metric_prod_eet_1"
 
 KAFKA_BOOTSTRAP_SERVERS = [
     "kafka-eet.us-east-1.backend-production.optimizely:9094",
@@ -11,7 +11,7 @@ KAFKA_BOOTSTRAP_SERVERS = [
 
 
 def main():
-    reporter = SamzaCustomMetricReporter(CONSUMER_GROUP_ID, KAFKA_BOOTSTRAP_SERVERS, depth_range=xrange(5))
+    reporter = SamzaCustomMetricReporter(CONSUMER_GROUP_ID, KAFKA_BOOTSTRAP_SERVERS, depth_range=xrange(5, 100))
     reporter.run()
 
 
