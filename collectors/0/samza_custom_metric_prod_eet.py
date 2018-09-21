@@ -10,7 +10,7 @@ KAFKA_BOOTSTRAP_SERVERS = [
 ]
 
 
-def main():     
+def main():
     reporter = SamzaCustomMetricReporter(CONSUMER_GROUP_ID, KAFKA_BOOTSTRAP_SERVERS, depth_range=xrange(5))
     reporter.run()
 
