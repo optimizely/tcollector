@@ -86,7 +86,7 @@ class SamzaMetricReporter:
                                                     ts,
                                                     metric_val,
                                                     tags)
-            sys.stdout.flush()
+                sys.stdout.flush()
 
     def report_consumer_lag(self, metrics_raw, header_raw):
 
@@ -112,7 +112,7 @@ class SamzaMetricReporter:
                         ts,
                         metric_val,
                         tags)
-            sys.stdout.flush()
+                sys.stdout.flush()
 
 
     def print_jvm_and_container_metric(self, metric_type, metric_name, ts, value, tags):
