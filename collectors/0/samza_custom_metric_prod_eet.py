@@ -5,9 +5,10 @@ from collectors.lib.samza_custom_metric_reporter import SamzaCustomMetricReporte
 
 CONSUMER_GROUP_ID = "tcollector_samza_custom_metric_prod_eet"
 
+# retry 4 times if any region node gets de-registered from DNS
 KAFKA_BOOTSTRAP_SERVERS = [
-    "kafka-eet.us-east-1.backend-production.optimizely:9094",
-]
+    "kafka-eet.us-east-1.backend-production.optimizely:9094"
+] * 4
 
 
 def main():
