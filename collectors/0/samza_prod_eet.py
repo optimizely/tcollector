@@ -7,7 +7,7 @@ CONSUMER_GROUP_ID = "tcollector_samza_prod_eet"
 
 # retry 4 times if any region node gets de-registered from DNS
 KAFKA_BOOTSTRAP_SERVERS = [
-    "kafka-eet.us-east-1.backend-production.optimizely:9094"
+    "prod-kafka-eet.us-east-1.optimizely:9094"
 ] * 4
 
 
