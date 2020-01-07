@@ -3,7 +3,7 @@ import sys
 
 from collectors.lib.samza_metric_reporter import SamzaMetricReporter
 
-CONSUMER_GROUP_ID = "tcollector_samza_prod"
+CONSUMER_GROUP_ID = "tcollector_samza_prod_1"
 
 # FIXME: Should we set this as an ENV?
 KAFKA_BOOTSTRAP_SERVERS = [
@@ -15,13 +15,9 @@ KAFKA_BOOTSTRAP_SERVERS = [
     'kafkaprod-6:9092'
 ]
 
-METRIC_CLASSES = ['org.apache.samza.system.kafka.KafkaSystemConsumerMetrics',
-                  'org.apache.samza.metrics.JvmMetrics',
-                  'org.apache.samza.container.SamzaContainerMetrics']
-
 
 def main():
-    reporter = SamzaMetricReporter(CONSUMER_GROUP_ID, KAFKA_BOOTSTRAP_SERVERS, metric_classes=METRIC_CLASSES)
+    reporter = SamzaMetricReporter(CONSUMER_GROUP_ID, KAFKA_BOOTSTRAP_SERVERS, metric_classes=['org.apache.samza.storage.kv.KeyValueStoreMetrics'])
     reporter.run()
 
 
