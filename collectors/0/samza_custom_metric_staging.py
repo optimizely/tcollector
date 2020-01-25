@@ -16,5 +16,6 @@ def main():
     reporter = SamzaCustomMetricReporter(CONSUMER_GROUP_ID, KAFKA_BOOTSTRAP_SERVERS)
     reporter.run()
 
+
 if __name__ == "__main__":
     sys.exit(main())

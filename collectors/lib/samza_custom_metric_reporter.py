@@ -3,8 +3,8 @@ import re
 
 from samza_metric_reporter import SamzaMetricReporter
 
-class SamzaCustomMetricReporter(SamzaMetricReporter):
 
+class SamzaCustomMetricReporter(SamzaMetricReporter):
     """
     This reporter only prints custom samza jobs related metrics. All
     generic Samza metrics, such as number of messages processed,
@@ -21,7 +21,7 @@ class SamzaCustomMetricReporter(SamzaMetricReporter):
             tags = self.create_standard_tags(header_raw)
             ts = int(header_raw['time'] / 1000)
             tags['source'] = self.sanitize(header_raw['source'])
-            metric_name  = self.convert_class_to_metric_name(class_name)
+            metric_name = self.convert_class_to_metric_name(class_name)
             if not metric_name:
                 continue
 
@@ -38,7 +38,8 @@ class SamzaCustomMetricReporter(SamzaMetricReporter):
                 return
             print self.sanitize(name), ts, value, self.to_tsdb_tag_str(tags)
 
-    def convert_class_to_metric_name(self, class_name):
+    @staticmethod
+    def convert_class_to_metric_name(class_name):
         # generic func to extract metric_name_string from class_name, compatible with exsiting mapping like
         #  'com.optimizely.sessionization.samza.SessionizationTask' : 'sessionization.metrics',
         #  'com.optimizely.preprocessing.samza.enrichevent.EnrichProjectIdTask' : 'enrichevents.metrics',
